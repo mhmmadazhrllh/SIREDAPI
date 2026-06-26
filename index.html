@@ -29,10 +29,11 @@
         .logo-kemen { height: 50px; width: auto; object-fit: contain; }
         .logo-sistem { height: 50px; width: auto; object-fit: contain; }
         
-        .btn-logout { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; }
-        .btn-logout:hover { background: #c53030; }
+        /* Tombol Keluar Berupa Teks Minimalis Kontras */
+        .btn-logout-text { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; box-shadow: 0 2px 4px rgba(229, 62, 62, 0.15); }
+        .btn-logout-text:hover { background: #c53030; transform: translateY(-1px); }
 
-        /* Judul Tengah */
+        /* Judul Dinamis Tengah */
         .center-heading { text-align: center; margin-bottom: 40px; margin-top: 10px; }
         .center-heading h1 { margin: 0 0 8px 0; font-size: 34px; letter-spacing: 1px; color: #1a365d; font-weight: 700; transition: 0.3s ease; }
         .center-heading .subtitle { font-size: 14px; color: #4a5568; margin: 0; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; transition: 0.3s ease; }
@@ -107,7 +108,7 @@
                 <img class="logo-kemen" src="logo-kementerian.png" alt="Logo Kementerian">
                 <img class="logo-sistem" src="logo-sistem.png" alt="Logo SI-REDAPI">
             </div>
-            <button class="btn-logout" onclick="prosesLogout()">Keluar (Logout)</button>
+            <button class="btn-logout-text" onclick="prosesLogout()">Keluar</button>
         </div>
 
         <div class="center-heading">
@@ -130,7 +131,7 @@
         let merekAktif = "";
 
         const ADMIN_USERNAME = "admin";
-        const ADMIN_PASSWORD = "redapipassword";
+        const ADMIN_PASSWORD = "admin123";
 
         function prosesLogin() {
             const userIn = document.getElementById('username').value;
@@ -148,10 +149,7 @@
         }
 
         function prosesLogout() {
-            // Memunculkan kotak konfirmasi sebelum benar-benar keluar
             const yakinKeluar = confirm("Apakah Anda yakin ingin keluar dari sistem SI-REDAPI?");
-            
-            // Jika user menekan tombol "OK", maka proses logout dijalankan
             if (yakinKeluar) {
                 document.getElementById('username').value = '';
                 document.getElementById('password').value = '';
@@ -162,7 +160,6 @@
                 document.getElementById('list-view').style.display = 'none';
                 resetJudulTengah();
             }
-            // Jika user menekan "Cancel", tidak akan terjadi apa-apa dan tetap di halaman dashboard
         }
 
         function muatData() {
@@ -208,7 +205,6 @@
             document.getElementById('merek-view').style.display = 'none';
             document.getElementById('list-view').style.display = 'block';
             
-            // RUBAH JUDUL TENGAH SESUAI MEREK YANG DIKLIK
             document.getElementById('main-title').innerText = merek;
             document.getElementById('main-subtitle').innerText = `Daftar Rekapitulasi Unit Senjata`;
             
@@ -254,7 +250,6 @@
         }
 
         function bukaBoxEdit(id) {
-            // Sembunyikan icon gir, munculkan kotak pilihan dropdown + simpan
             document.getElementById(`btn-edit-${id}`).style.display = 'none';
             document.getElementById(`box-edit-${id}`).style.display = 'flex';
         }
@@ -264,14 +259,9 @@
             const indeks = dataGlobal.findIndex(item => item.id === id);
             
             if (indeks !== -1) {
-                // Update status di memori lokal browser
                 dataGlobal[indeks].status = statusBaru;
-                
-                // Kembalikan UI ke kondisi awal (Gir muncul lagi, dropdown sembunyi)
                 document.getElementById(`btn-edit-${id}`).style.display = 'inline-block';
                 document.getElementById(`box-edit-${id}`).style.display = 'none';
-                
-                // Refresh daftar senjata agar warna badge langsung ter-update otomatis
                 lihatDetailMerek(merekAktif);
             }
         }
