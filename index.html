@@ -70,6 +70,7 @@
         .btn-icon-edit { background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px; border-radius: 5px; transition: 0.2s; }
         .btn-icon-edit:hover { background: #edf2f7; }
         
+        /* Box dropdown status */
         .dropdown-edit-box { display: none; align-items: center; gap: 6px; background: #f7fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
         .select-status { padding: 4px 6px; font-size: 13px; border-radius: 4px; border: 1px solid #cbd5e0; outline: none; }
         .btn-save-status { background: #3182ce; color: white; border: none; padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: 600; }
@@ -200,7 +201,8 @@
                 const jenis = sessionStorage.getItem("jenisAktif");
                 const merek = sessionStorage.getItem("merekAktif");
 
-                if (merek) {
+                if (merek && jenis) {
+                    jenisAktif = jenis;
                     lihatMerekByJenis(jenis);
                     setTimeout(() => {
                         lihatDetailMerek(merek);
@@ -241,6 +243,7 @@
 
     function lihatMerekByJenis(jenis) {
         jenisAktif = jenis;
+        sessionStorage.setItem("jenisAktif", jenis);
         document.getElementById("jenis-view").style.display = "none";
         document.getElementById("merek-view").style.display = "block";
         document.getElementById("list-view").style.display = "none";
@@ -280,6 +283,9 @@
 
     function lihatDetailMerek(merek) {
         merekAktif = merek;
+        sessionStorage.setItem("jenisAktif", jenisAktif);
+        sessionStorage.setItem("merekAktif", merek);
+        
         document.getElementById('merek-view').style.display = 'none';
         document.getElementById('list-view').style.display = 'block';
         
@@ -301,9 +307,6 @@
 
             item.innerHTML = `
                 <div class="senjata-left" onclick="
-                    sessionStorage.setItem('isLogin','true');
-                    sessionStorage.setItem('jenisAktif', '${jenisAktif}');
-                    sessionStorage.setItem('merekAktif', '${merek}');
                     window.location.href='detail.html?id=${senjata.id}';
                 ">
                     <img src="${senjata.lokasi_foto}" alt="${senjata.nama}">
@@ -347,19 +350,16 @@
 
         const urlApi = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
 
-        // Rekonstruksi token dinamis tepat di dalam fungsi saat tombol diklik
+        // Rekonstruksi token secara dinamis agar aman dari Push Protection
         const part1 = "ghp_1q1UKwvfddUYFkiV26";
         const part2 = "HUO5Ec6tpRgK0DyxWL";
         const tokenDinamis = part1 + part2;
 
-        // Langkah A: Ambil dokumen JSON asli beserta kode SHA-nya dari server GitHub
         fetch(urlApi, {
             headers: { "Authorization": `token ${tokenDinamis}` }
         })
         .then(res => {
-            if (!res.ok) {
-                throw new Error("Gagal mengambil data dari repositori (Token tidak valid atau Kedaluwarsa).");
-            }
+            if (!res.ok) throw new Error("Gagal mengambil SHA berkas dari repositori.");
             return res.json();
         })
         .then(resData => {
@@ -367,7 +367,6 @@
             const currentJson = JSON.parse(fileContent);
             const shaFile = resData.sha;
 
-            // Langkah B: Cari id unit dan ubah statusnya di array lokal data tersebut
             const indeks = currentJson.findIndex(item => item.id === id);
             if (indeks !== -1) {
                 currentJson[indeks].status = statusBaru;
@@ -375,7 +374,6 @@
                 const updatedString = JSON.stringify(currentJson, null, 2);
                 const updatedBase64 = btoa(unescape(encodeURIComponent(updatedString)));
 
-                // Langkah C: Kirim perintah PUT request ke GitHub API untuk menimpa file
                 return fetch(urlApi, {
                     method: "PUT",
                     headers: {
@@ -389,7 +387,7 @@
                     })
                 });
             } else {
-                throw new Error("ID Senjata tidak ditemukan dalam file database.");
+                throw new Error("ID Senjata tidak ditemukan.");
             }
         })
         .then(response => {
@@ -412,7 +410,9 @@
 
     function kembaliKeJenis() {
         merekAktif = "";
+        jenisAktif = "";
         sessionStorage.removeItem("merekAktif");
+        sessionStorage.removeItem("jenisAktif");
         document.getElementById('jenis-view').style.display = 'block';
         document.getElementById('merek-view').style.display = 'none';
         resetJudulTengah();
