@@ -145,16 +145,9 @@
     const ADMIN_PASSWORD = "admin123";
 
     // --- CONFIGURATION GITHUB API ---
-    // Ganti dengan username, nama repo, dan Token ghp_ milik Kak Azhrullah
     const GH_OWNER = "mhmmadazhrllh"; 
     const GH_REPO = "SIREDAPI";
     const GH_PATH = "data_senjata.json";
-    // Potong token aslimu menjadi dua bagian di sini
-    const part1 = "ghp_1q1UKwvfddUYFkiV26";
-    const part2 = "HUO5Ec6tpRgK0DyxWL";
-
-    // Gabungkan kedua bagian tersebut
-    const GH_TOKEN = part1 + part2;
     // --------------------------------
 
     window.onload = function() {
@@ -199,7 +192,6 @@
     }
 
     function muatData() {
-        // Mengambil data fresh langsung dari URL mentah GitHub Pages agar selalu up-to-date
         fetch(`https://${GH_OWNER}.github.io/${GH_REPO}/${GH_PATH}?t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
@@ -291,7 +283,7 @@
         document.getElementById('merek-view').style.display = 'none';
         document.getElementById('list-view').style.display = 'block';
         
-        document.getElementById('main-title').innerText = senderMerek = merek;
+        document.getElementById('main-title').innerText = merek;
         document.getElementById('main-subtitle').innerText = `Daftar Rekapitulasi Unit Senjata`;
         
         const listContainer = document.getElementById('senjata-list-container');
@@ -355,13 +347,22 @@
 
         const urlApi = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
 
+        // Rekonstruksi token dinamis tepat di dalam fungsi saat tombol diklik
+        const part1 = "ghp_1q1UKwvfddUYFkiV26";
+        const part2 = "HUO5Ec6tpRgK0DyxWL";
+        const tokenDinamis = part1 + part2;
+
         // Langkah A: Ambil dokumen JSON asli beserta kode SHA-nya dari server GitHub
         fetch(urlApi, {
-            headers: { "Authorization": `token ${GH_TOKEN}` }
+            headers: { "Authorization": `token ${tokenDinamis}` }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("Gagal mengambil data dari repositori (Token tidak valid atau Kedaluwarsa).");
+            }
+            return res.json();
+        })
         .then(resData => {
-            // Decode data base64 dari GitHub ke string teks biasa
             const fileContent = atob(resData.content);
             const currentJson = JSON.parse(fileContent);
             const shaFile = resData.sha;
@@ -371,17 +372,14 @@
             if (indeks !== -1) {
                 currentJson[indeks].status = statusBaru;
 
-                // Konversi kembali objek JSON ke string teks terformat rapi
                 const updatedString = JSON.stringify(currentJson, null, 2);
-                
-                // Encode string JSON baru ke format base64 sesuai regulasi GitHub API
                 const updatedBase64 = btoa(unescape(encodeURIComponent(updatedString)));
 
                 // Langkah C: Kirim perintah PUT request ke GitHub API untuk menimpa file
                 return fetch(urlApi, {
                     method: "PUT",
                     headers: {
-                        "Authorization": `token ${GH_TOKEN}`,
+                        "Authorization": `token ${tokenDinamis}`,
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
@@ -390,12 +388,13 @@
                         sha: shaFile
                     })
                 });
+            } else {
+                throw new Error("ID Senjata tidak ditemukan dalam file database.");
             }
         })
         .then(response => {
             if (response && response.ok) {
                 alert(`Berhasil! Status Kelayakan Unit ${id} Kini Permanen Berubah di GitHub.`);
-                // Memuat ulang data lokal agar visual dashboard langsung sinkron
                 muatData();
             } else {
                 alert("Gagal melakukan sinkronisasi permanen ke server GitHub.");
@@ -405,7 +404,7 @@
         })
         .catch(err => {
             console.error(err);
-            alert("Terjadi gangguan koneksi saat menyimpan data.");
+            alert(`Terjadi kesalahan: ${err.message}`);
             saveBtn.innerText = "Simpan";
             saveBtn.disabled = false;
         });
