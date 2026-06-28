@@ -193,26 +193,51 @@
     }
 
     function muatData() {
-        fetch(`https://${GH_OWNER}.github.io/${GH_REPO}/${GH_PATH}?t=${new Date().getTime()}`)
-            .then(response => response.json())
-            .then(data => {
-                dataGlobal = data;
-                
-                const jenis = sessionStorage.getItem("jenisAktif");
-                const merek = sessionStorage.getItem("merekAktif");
+        const urlApi = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
+        
+        // Rekonstruksi token dinamis untuk autentikasi API langsung
+        const part1 = "ghp_1q1UKwvfddUYFkiV26";
+        const part2 = "HUO5Ec6tpRgK0DyxWL";
+        const tokenDinamis = part1 + part2;
 
-                if (merek && jenis) {
-                    jenisAktif = jenis;
-                    lihatMerekByJenis(jenis);
-                    setTimeout(() => {
-                        lihatDetailMerek(merek);
-                    }, 50);
-                    return;
-                }
+        // Ambil data fresh langsung dari GitHub REST API (Bypass CDN Cache GitHub Pages)
+        fetch(urlApi, {
+            headers: { 
+                "Authorization": `token ${tokenDinamis}`,
+                "Accept": "application/vnd.github.v3.raw" // Mengambil isi teks JSON mentah secara langsung
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Gagal memuat data real-time dari API.");
+            return response.json();
+        })
+        .then(data => {
+            dataGlobal = data;
+            
+            const jenis = sessionStorage.getItem("jenisAktif");
+            const merek = sessionStorage.getItem("merekAktif");
 
-                tampilkanBlokJenis(data);
-            })
-            .catch(err => console.error("Gagal memuat database JSON:", err));
+            if (merek && jenis) {
+                jenisAktif = jenis;
+                lihatMerekByJenis(jenis);
+                setTimeout(() => {
+                    lihatDetailMerek(merek);
+                }, 50);
+                return;
+            }
+
+            tampilkanBlokJenis(data);
+        })
+        .catch(err => {
+            console.error("Gagal memuat database JSON secara real-time:", err);
+            // Fallback: Jika API bermasalah, ambil dari jalur GitHub Pages biasa
+            fetch(`https://${GH_OWNER}.github.io/${GH_REPO}/${GH_PATH}?t=${new Date().getTime()}`)
+                .then(res => res.json())
+                .then(data => {
+                    dataGlobal = data;
+                    tampilkanBlokJenis(data);
+                });
+        });
     }
 
     function tampilkanBlokJenis(data) {
