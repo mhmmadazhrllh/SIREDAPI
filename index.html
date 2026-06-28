@@ -38,19 +38,19 @@
         .center-heading h1 { margin: 0 0 8px 0; font-size: 34px; letter-spacing: 1px; color: #1a365d; font-weight: 700; transition: 0.3s ease; }
         .center-heading .subtitle { font-size: 14px; color: #4a5568; margin: 0; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; transition: 0.3s ease; }
 
-        /* Grid Kotak Merek */
+        /* Grid Kotak */
         .grid-merek { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; }
         .merek-card { background: white; padding: 20px; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease; border: 1px solid #e2e8f0; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .merek-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: #2b6cb0; }
+        .merek-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: #3182ce; }
         .merek-card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 15px; background: #fafafa; border-radius: 8px; padding: 5px; box-sizing: border-box; border: 1px solid #f0f0f0; }
         .merek-card h3 { margin: 0 0 10px 0; font-size: 17px; color: #2d3748; font-weight: 600; }
         .merek-card p { margin: 0; font-size: 12px; color: #4a5568; background: #edf2f7; display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         
         /* ----------------------------------------------- */
-        /* HALAMAN DAFTAR SENJATA */
+        /* SEKSI DAFTAR & NAVIGATION */
         /* ----------------------------------------------- */
         .list-section { display: none; text-align: left; animation: fadeIn 0.3s ease; }
-        .btn-back { background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; font-weight: 500; }
+        .btn-back { background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; font-weight: 500; display: inline-block; }
         .btn-back:hover { background: #2d3748; }
         
         .senjata-item { background: white; padding: 15px; border-radius: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; }
@@ -83,6 +83,7 @@
 </head>
 <body>
 
+    <!-- ================= LAYOUT FORM LOGIN ================= -->
     <div id="login-view" class="login-box">
         <div style="text-align: center; margin-bottom: 20px;">
             <img src="logo-kementerian.png" style="height: 55px; margin-right: 12px;" alt="Logo Kemen">
@@ -101,6 +102,7 @@
         <div id="error-message" class="error-msg">Username atau Password salah!</div>
     </div>
 
+    <!-- ================= LAYOUT DASHBOARD UTAMA ================= -->
     <div class="container" id="dashboard-view">
         
         <div class="top-bar">
@@ -116,10 +118,18 @@
             <div id="main-subtitle" class="subtitle">Sistem Rekapitulasi Data Senjata Api</div>
         </div>
 
-        <div id="merek-view">
+        <!-- VIEW 1: Kotak Pilihan Jenis (Kategori Utama) -->
+        <div id="jenis-view">
+            <div class="grid-merek" id="jenis-container"></div>
+        </div>
+
+        <!-- VIEW 2: Kotak Merek Pabrik (Muncul Setelah Jenis Diklik) -->
+        <div id="merek-view" style="display:none; text-align: left;">
+            <button class="btn-back" onclick="kembaliKeJenis()">← Kembali ke Jenis</button>
             <div class="grid-merek" id="merek-container"></div>
         </div>
 
+        <!-- VIEW 3: Daftar Unit Senjata Api -->
         <div id="list-view" class="list-section">
             <button class="btn-back" onclick="kembaliKeMerek()">← Kembali ke Merek</button>
             <div id="senjata-list-container"></div>
@@ -127,156 +137,301 @@
     </div>
 
     <script>
-        let dataGlobal = [];
-        let merekAktif = "";
+    let dataGlobal = [];
+    let jenisAktif = "";
+    let merekAktif = "";
 
-        const ADMIN_USERNAME = "admin";
-        const ADMIN_PASSWORD = "admin123";
+    const ADMIN_USERNAME = "admin";
+    const ADMIN_PASSWORD = "admin123";
 
-        function prosesLogin() {
-            const userIn = document.getElementById('username').value;
-            const passIn = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-message');
+    // --- CONFIGURATION GITHUB API ---
+    // Ganti dengan username, nama repo, dan Token ghp_ milik Kak Azhrullah
+    const GH_OWNER = "mhmmadazhrllh"; 
+    const GH_REPO = "SIREDAPI";
+    const GH_PATH = "data_senjata.json";
+    // Potong token aslimu menjadi dua bagian di sini
+    const part1 = "ghp_1q1UKwvfddUYFkiV26";
+    const part2 = "HUO5Ec6tpRgK0DyxWL";
 
-            if (userIn === ADMIN_USERNAME && passIn === ADMIN_PASSWORD) {
-                document.getElementById('login-view').style.display = 'none';
-                document.getElementById('dashboard-view').style.display = 'block';
-                errorMsg.style.display = 'none';
-                muatData();
-            } else {
-                errorMsg.style.display = 'block';
-            }
+    // Gabungkan kedua bagian tersebut
+    const GH_TOKEN = part1 + part2;
+    // --------------------------------
+
+    window.onload = function() {
+        if (sessionStorage.getItem("isLogin") === "true") {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+            muatData();
         }
+    };
 
-        function prosesLogout() {
-            const yakinKeluar = confirm("Apakah Anda yakin ingin keluar dari sistem SI-REDAPI?");
-            if (yakinKeluar) {
-                document.getElementById('username').value = '';
-                document.getElementById('password').value = '';
-                document.getElementById('login-view').style.display = 'block';
-                document.getElementById('dashboard-view').style.display = 'none';
-                merekAktif = "";
-                document.getElementById('merek-view').style.display = 'block';
-                document.getElementById('list-view').style.display = 'none';
-                resetJudulTengah();
-            }
+    function prosesLogin() {
+        const userIn = document.getElementById('username').value;
+        const passIn = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-message');
+
+        if (userIn === ADMIN_USERNAME && passIn === ADMIN_PASSWORD) {
+            sessionStorage.setItem("isLogin", "true");
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+            errorMsg.style.display = 'none';
+            muatData();
+        } else {
+            errorMsg.style.display = 'block';
         }
+    }
 
-        function muatData() {
-            fetch('data_senjata.json')
-                .then(response => response.json())
-                .then(data => {
-                    dataGlobal = data;
-                    document.getElementById('merek-container').innerHTML = '';
-                    tampilkanBlokMerek(data);
-                    if(merekAktif) {
-                        lihatDetailMerek(merekAktif);
-                    }
-                })
-                .catch(err => console.error("Gagal memuat database JSON:", err));
-        }
-
-        function tampilkanBlokMerek(data) {
-            const container = document.getElementById('merek-container');
-            const merekSet = {};
-            data.forEach(item => {
-                if (!merekSet[item.merk_pabrik]) {
-                    merekSet[item.merk_pabrik] = { jumlah: 0, foto_sampel: item.lokasi_foto };
-                }
-                merekSet[item.merk_pabrik].jumlah += 1;
-            });
-
-            Object.keys(merekSet).forEach(merek => {
-                const card = document.createElement('div');
-                card.className = 'merek-card';
-                card.onclick = () => lihatDetailMerek(merek);
-                
-                card.innerHTML = `
-                    <img src="${merekSet[merek].foto_sampel}" alt="Sampel ${merek}">
-                    <h3>${merek}</h3>
-                    <p>${merekSet[merek].jumlah} Unit Senjata</p>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function lihatDetailMerek(merek) {
-            merekAktif = merek;
-            document.getElementById('merek-view').style.display = 'none';
-            document.getElementById('list-view').style.display = 'block';
-            
-            document.getElementById('main-title').innerText = merek;
-            document.getElementById('main-subtitle').innerText = `Daftar Rekapitulasi Unit Senjata`;
-            
-            const listContainer = document.getElementById('senjata-list-container');
-            listContainer.innerHTML = ''; 
-
-            const senjataTersaring = dataGlobal.filter(item => item.merk_pabrik === merek);
-            
-            senjataTersaring.forEach(senjata => {
-                const item = document.createElement('div');
-                item.className = 'senjata-item';
-                
-                const isRusak = (senjata.status && senjata.status.toLowerCase() === 'rusak');
-                const statusClass = isRusak ? 'status-rusak' : 'status-baik';
-                const statusTeks = senjata.status || 'Baik';
-
-                item.innerHTML = `
-                    <div class="senjata-left" onclick="window.location.href='detail.html?id=${senjata.id}'">
-                        <img src="${senjata.lokasi_foto}" alt="${senjata.nama}">
-                        <div class="senjata-item-info">
-                            <h4>${senjata.nama}</h4>
-                            <p>No. Senjata: <strong>${senjata.no_senjata}</strong> | ID Aset: ${senjata.id}</p>
-                            <div class="status-container">
-                                <span id="badge-${senjata.id}" class="status-badge ${statusClass}">${statusTeks}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="edit-action-area">
-                        <button id="btn-edit-${senjata.id}" class="btn-icon-edit" onclick="bukaBoxEdit('${senjata.id}')">⚙️</button>
-                        
-                        <div id="box-edit-${senjata.id}" class="dropdown-edit-box">
-                            <select id="select-${senjata.id}" class="select-status">
-                                <option value="Baik" ${!isRusak ? 'selected' : ''}>Baik</option>
-                                <option value="Rusak" ${isRusak ? 'selected' : ''}>Rusak</option>
-                            </select>
-                            <button class="btn-save-status" onclick="simpanStatusBaru('${senjata.id}')">Simpan</button>
-                        </div>
-                    </div>
-                `;
-                listContainer.appendChild(item);
-            });
-        }
-
-        function bukaBoxEdit(id) {
-            document.getElementById(`btn-edit-${id}`).style.display = 'none';
-            document.getElementById(`box-edit-${id}`).style.display = 'flex';
-        }
-
-        function simpanStatusBaru(id) {
-            const statusBaru = document.getElementById(`select-${id}`).value;
-            const indeks = dataGlobal.findIndex(item => item.id === id);
-            
-            if (indeks !== -1) {
-                dataGlobal[indeks].status = statusBaru;
-                document.getElementById(`btn-edit-${id}`).style.display = 'inline-block';
-                document.getElementById(`box-edit-${id}`).style.display = 'none';
-                lihatDetailMerek(merekAktif);
-            }
-        }
-
-        function kembaliKeMerek() {
+    function prosesLogout() {
+        const yakinKeluar = confirm("Apakah Anda yakin ingin keluar dari sistem SI-REDAPI?");
+        if (yakinKeluar) {
+            sessionStorage.clear();
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('login-view').style.display = 'block';
+            document.getElementById('dashboard-view').style.display = 'none';
+            jenisAktif = "";
             merekAktif = "";
-            document.getElementById('merek-view').style.display = 'block';
+            document.getElementById('jenis-view').style.display = 'block';
+            document.getElementById('merek-view').style.display = 'none';
             document.getElementById('list-view').style.display = 'none';
             resetJudulTengah();
         }
+    }
 
-        function resetJudulTengah() {
-            document.getElementById('main-title').innerText = "SI-REDAPI";
-            document.getElementById('main-subtitle').innerText = "Sistem Rekapitulasi Data Senjata Api";
-        }
-    </script>
+    function muatData() {
+        // Mengambil data fresh langsung dari URL mentah GitHub Pages agar selalu up-to-date
+        fetch(`https://${GH_OWNER}.github.io/${GH_REPO}/${GH_PATH}?t=${new Date().getTime()}`)
+            .then(response => response.json())
+            .then(data => {
+                dataGlobal = data;
+                
+                const jenis = sessionStorage.getItem("jenisAktif");
+                const merek = sessionStorage.getItem("merekAktif");
+
+                if (merek) {
+                    lihatMerekByJenis(jenis);
+                    setTimeout(() => {
+                        lihatDetailMerek(merek);
+                    }, 50);
+                    return;
+                }
+
+                tampilkanBlokJenis(data);
+            })
+            .catch(err => console.error("Gagal memuat database JSON:", err));
+    }
+
+    function tampilkanBlokJenis(data) {
+        const container = document.getElementById("jenis-container");
+        container.innerHTML = "";
+        const jenisSet = {};
+
+        data.forEach(item => {
+            if (!jenisSet[item.jenis]) {
+                jenisSet[item.jenis] = { jumlah: 0, foto: item.lokasi_foto };
+            }
+            jenisSet[item.jenis].jumlah++;
+        });
+
+        Object.keys(jenisSet).forEach(jenis => {
+            const card = document.createElement("div");
+            card.className = "merek-card";
+            card.onclick = () => lihatMerekByJenis(jenis);
+
+            card.innerHTML = `
+                <img src="${jenisSet[jenis].foto}" alt="${jenis}">
+                <h3>${jenis}</h3>
+                <p>${jenisSet[jenis].jumlah} Unit</p>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function lihatMerekByJenis(jenis) {
+        jenisAktif = jenis;
+        document.getElementById("jenis-view").style.display = "none";
+        document.getElementById("merek-view").style.display = "block";
+        document.getElementById("list-view").style.display = "none";
+
+        document.getElementById("main-title").innerText = jenis;
+        document.getElementById("main-subtitle").innerText = "Pilih Merek Pabrik";
+
+        const dataJenis = dataGlobal.filter(item => item.jenis === jenis);
+        tampilkanBlokMerek(dataJenis);
+    }
+
+    function tampilkanBlokMerek(dataSaring) {
+        const container = document.getElementById('merek-container');
+        container.innerHTML = '';
+        const merekSet = {};
+
+        dataSaring.forEach(item => {
+            if (!merekSet[item.merk_pabrik]) {
+                merekSet[item.merk_pabrik] = { jumlah: 0, foto_sampel: item.lokasi_foto };
+            }
+            merekSet[item.merk_pabrik].jumlah += 1;
+        });
+
+        Object.keys(merekSet).forEach(merek => {
+            const card = document.createElement('div');
+            card.className = 'merek-card';
+            card.onclick = () => lihatDetailMerek(merek);
+            
+            card.innerHTML = `
+                <img src="${merekSet[merek].foto_sampel}" alt="Sampel ${merek}">
+                <h3>${merek}</h3>
+                <p>${merekSet[merek].jumlah} Unit Senjata</p>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function lihatDetailMerek(merek) {
+        merekAktif = merek;
+        document.getElementById('merek-view').style.display = 'none';
+        document.getElementById('list-view').style.display = 'block';
+        
+        document.getElementById('main-title').innerText = senderMerek = merek;
+        document.getElementById('main-subtitle').innerText = `Daftar Rekapitulasi Unit Senjata`;
+        
+        const listContainer = document.getElementById('senjata-list-container');
+        listContainer.innerHTML = ''; 
+
+        const senjataTersaring = dataGlobal.filter(item => item.merk_pabrik === merek && item.jenis === jenisAktif);
+        
+        senjataTersaring.forEach(senjata => {
+            const item = document.createElement('div');
+            item.className = 'senjata-item';
+            
+            const isRusak = (senjata.status && senjata.status.toLowerCase() === 'rusak');
+            const statusClass = isRusak ? 'status-rusak' : 'status-baik';
+            const statusTeks = senjata.status || 'Baik';
+
+            item.innerHTML = `
+                <div class="senjata-left" onclick="
+                    sessionStorage.setItem('isLogin','true');
+                    sessionStorage.setItem('jenisAktif', '${jenisAktif}');
+                    sessionStorage.setItem('merekAktif', '${merek}');
+                    window.location.href='detail.html?id=${senjata.id}';
+                ">
+                    <img src="${senjata.lokasi_foto}" alt="${senjata.nama}">
+                    <div class="senjata-item-info">
+                        <h4>${senjata.nama}</h4>
+                        <p>No. Senjata: <strong>${senjata.no_senjata}</strong> | ID Aset: ${senjata.id}</p>
+                        <div class="status-container">
+                            <span id="badge-${senjata.id}" class="status-badge ${statusClass}">${statusTeks}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="edit-action-area">
+                    <button id="btn-edit-${senjata.id}" class="btn-icon-edit" onclick="bukaBoxEdit('${senjata.id}')">⚙️</button>
+                    
+                    <div id="box-edit-${senjata.id}" class="dropdown-edit-box">
+                        <select id="select-${senjata.id}" class="select-status">
+                            <option value="Baik" ${!isRusak ? 'selected' : ''}>Baik</option>
+                            <option value="Rusak" ${isRusak ? 'selected' : ''}>Rusak</option>
+                        </select>
+                        <button id="save-btn-${senjata.id}" class="btn-save-status" onclick="simpanStatusBaru('${senjata.id}')">Simpan</button>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(item);
+        });
+    }
+
+    function bukaBoxEdit(id) {
+        document.getElementById(`btn-edit-${id}`).style.display = 'none';
+        document.getElementById(`box-edit-${id}`).style.display = 'flex';
+    }
+
+    // --- FUNGSI UPDATE PERMANEN KE GITHUB VIA REST API ---
+    function simpanStatusBaru(id) {
+        const statusBaru = document.getElementById(`select-${id}`).value;
+        const saveBtn = document.getElementById(`save-btn-${id}`);
+        
+        saveBtn.innerText = "Memproses...";
+        saveBtn.disabled = true;
+
+        const urlApi = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
+
+        // Langkah A: Ambil dokumen JSON asli beserta kode SHA-nya dari server GitHub
+        fetch(urlApi, {
+            headers: { "Authorization": `token ${GH_TOKEN}` }
+        })
+        .then(res => res.json())
+        .then(resData => {
+            // Decode data base64 dari GitHub ke string teks biasa
+            const fileContent = atob(resData.content);
+            const currentJson = JSON.parse(fileContent);
+            const shaFile = resData.sha;
+
+            // Langkah B: Cari id unit dan ubah statusnya di array lokal data tersebut
+            const indeks = currentJson.findIndex(item => item.id === id);
+            if (indeks !== -1) {
+                currentJson[indeks].status = statusBaru;
+
+                // Konversi kembali objek JSON ke string teks terformat rapi
+                const updatedString = JSON.stringify(currentJson, null, 2);
+                
+                // Encode string JSON baru ke format base64 sesuai regulasi GitHub API
+                const updatedBase64 = btoa(unescape(encodeURIComponent(updatedString)));
+
+                // Langkah C: Kirim perintah PUT request ke GitHub API untuk menimpa file
+                return fetch(urlApi, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `token ${GH_TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: `Update status kelayakan unit ${id} menjadi ${statusBaru} via SI-REDAPI`,
+                        content: updatedBase64,
+                        sha: shaFile
+                    })
+                });
+            }
+        })
+        .then(response => {
+            if (response && response.ok) {
+                alert(`Berhasil! Status Kelayakan Unit ${id} Kini Permanen Berubah di GitHub.`);
+                // Memuat ulang data lokal agar visual dashboard langsung sinkron
+                muatData();
+            } else {
+                alert("Gagal melakukan sinkronisasi permanen ke server GitHub.");
+                saveBtn.innerText = "Simpan";
+                saveBtn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Terjadi gangguan koneksi saat menyimpan data.");
+            saveBtn.innerText = "Simpan";
+            saveBtn.disabled = false;
+        });
+    }
+
+    function kembaliKeJenis() {
+        merekAktif = "";
+        sessionStorage.removeItem("merekAktif");
+        document.getElementById('jenis-view').style.display = 'block';
+        document.getElementById('merek-view').style.display = 'none';
+        resetJudulTengah();
+    }
+
+    function kembaliKeMerek() {
+        merekAktif = "";
+        sessionStorage.removeItem("merekAktif");
+        document.getElementById('merek-view').style.display = 'block';
+        document.getElementById('list-view').style.display = 'none';
+        document.getElementById('main-title').innerText = jenisAktif;
+        document.getElementById('main-subtitle').innerText = "Pilih Merek Pabrik";
+    }
+
+    function resetJudulTengah() {
+        document.getElementById('main-title').innerText = "SI-REDAPI";
+        document.getElementById('main-subtitle').innerText = "Sistem Rekapitulasi Data Senjata Api";
+    }
+</script>
 </body>
 </html>

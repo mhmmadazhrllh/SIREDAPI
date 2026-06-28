@@ -25,11 +25,10 @@
         th { background-color: #f7fafc; width: 38%; color: #4a5568; font-weight: 600; }
         td { color: #2d3748; }
         
-        /* Badge Status Indikator */
-        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .status-baik { background-color: #c6f6d5; color: #22543d; }
-        .status-rusak { background-color: #fed7d7; color: #742a2a; }
-        
+        /* Tombol Kembali ke List (Hanya muncul jika isLogin bernilai true) */
+        .btn-kembali-list { display: none; width: 100%; background-color: #4a5568; color: white; border: none; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 20px; box-sizing: border-box; }
+        .btn-kembali-list:hover { background-color: #2d3748; }
+
         .loading { font-size: 14px; color: #718096; padding: 40px 0; }
     </style>
 </head>
@@ -40,11 +39,9 @@
     </div>
 
     <script>
-        // 1. Tangkap ID Senjata dari URL barcode (?id=SNJ-xxx)
         const urlParams = new URLSearchParams(window.location.search);
         const senjataId = urlParams.get('id');
 
-        // 2. Tarik data spesifikasi dari file JSON
         fetch('data_senjata.json')
             .then(response => response.json())
             .then(data => {
@@ -52,11 +49,6 @@
                 const kontenDiv = document.getElementById('detail-konten');
                 
                 if (senjata) {
-                    const isRusak = (senjata.status && senjata.status.toLowerCase() === 'rusak');
-                    const statusClass = isRusak ? 'status-rusak' : 'status-baik';
-                    const statusTeks = senjata.status || 'Baik';
-
-                    // Memunculkan Header Logo Kembar, Foto Fisik, dan Tabel Data Lengkap
                     kontenDiv.innerHTML = `
                         <div class="header-logo-container">
                             <img class="logo-kemen-detail" src="logo-kementerian.png" alt="Logo Kementerian">
@@ -70,7 +62,16 @@
                             <tr><th>Jenis Bentuk</th><td>${senjata.jenis}</td></tr>
                             <tr><th>Kaliber</th><td>${senjata.kaliber}</td></tr>
                         </table>
+                        
+                        <!-- Menggunakan Fungsi Baru kembaliDashboard() -->
+                        <button id="tombol-kembali" class="btn-kembali-list" onclick="kembaliDashboard()">← Kembali ke Daftar</button>
                     `;
+
+                    // Logika Baru: Tampilkan Tombol Berdasarkan State isLogin
+                    if (sessionStorage.getItem("isLogin") === "true") {
+                        document.getElementById("tombol-kembali").style.display = "block";
+                    }
+
                 } else {
                     kontenDiv.innerHTML = `
                         <div class="header-logo-container">
@@ -85,10 +86,19 @@
             .catch(err => {
                 console.error(err);
                 document.getElementById('detail-konten').innerHTML = `
-                    <h3 style="color:#e53e3e; margin:0;">Gangguan Sistem</h3>
+                    <h3 style="color:#e53e3e; margin:0;">⚠️ Gangguan Sistem</h3>
                     <p style="font-size:14px; color:#718096;">Gagal memuat basis data registrasi senjata.</p>
                 `;
             });
+
+        // Fungsi Penanganan Navigasi Kembali ke Dashboard
+        function kembaliDashboard() {
+            if (sessionStorage.getItem("isLogin") === "true") {
+                window.location.href = "index.html";
+            } else {
+                window.location.href = "index.html";
+            }
+        }
     </script>
 </body>
 </html>
